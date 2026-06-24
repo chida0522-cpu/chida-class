@@ -565,17 +565,12 @@ window._appInit = async function(){
 // 로그인
 // ═══════════════════════════════════════════════
 async function signInGoogle(){
-  const {auth, GoogleAuthProvider, signInWithPopup, signInWithRedirect} = window._fb;
+  const {auth, GoogleAuthProvider, signInWithRedirect} = window._fb;
   const provider = new GoogleAuthProvider();
-  // iOS Safari는 팝업 차단이 많아 리다이렉트로 폴백
   try {
-    await signInWithPopup(auth, provider);
+    await signInWithRedirect(auth, provider);
   } catch(e){
-    if(e.code==='auth/popup-blocked' || e.code==='auth/cancelled-popup-request'){
-      await signInWithRedirect(auth, provider);
-    } else {
-      toast('로그인 실패: '+e.message);
-    }
+    toast('로그인 실패: '+e.message);
   }
 }
 
