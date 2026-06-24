@@ -91,6 +91,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
 
 /* ── LOGIN PAGE ── */
 #page-login{
+  position:fixed;inset:0;z-index:200;
   display:none;align-items:center;justify-content:center;
   flex-direction:column;gap:0;background:var(--surface);
 }
@@ -338,7 +339,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--lime);ba
 <div id="app">
 
   <!-- ══ LOGIN ══ -->
-  <div id="page-login" class="page">
+  <div id="page-login">
     <div class="login-logo">🥁</div>
     <div class="login-title">치다 수업관리</div>
     <div class="login-sub">모든 기기에서 수업 기록을<br>자동으로 동기화합니다</div>
