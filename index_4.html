@@ -392,7 +392,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--lime);ba
   </nav>
 </div>
 
-<div id="sov" onclick="closeSheet()"></div>
+<div id="sov" onclick="confirmClose()"></div>
 <div id="sheet"><div id="sheet-content"></div></div>
 <div id="toast"></div>
 
@@ -666,6 +666,7 @@ function openLog(logId){
   document.getElementById('sheet-content').innerHTML=`
   <div class="sh-handle"></div>
   <div class="sh-hd">
+    <button onclick="closeSheet()" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);padding:6px 12px;border:1.5px solid var(--border2);border-radius:var(--radius-sm);font-family:inherit">✕ 취소</button>
     <div class="sh-title">${logId?'기록 수정':'수업 기록'}</div>
     ${logId?`<button class="btn-danger" onclick="deleteLog('${logId}')" style="padding:6px 12px;font-size:12px">삭제</button>`:''}
   </div>
@@ -828,6 +829,14 @@ async function resetAll(){
 // ── 시트 / 토스트 ──
 function openSheet(){document.getElementById('sov').classList.add('open');document.getElementById('sheet').classList.add('open');}
 function closeSheet(){document.getElementById('sov').classList.remove('open');document.getElementById('sheet').classList.remove('open');}
+function confirmClose(){
+  // 수업기록 폼이 열려있을 때만 확인, 기관추가 폼은 바로 닫기
+  if(document.getElementById('f-date')){
+    if(confirm('변경사항을 저장하지 않고 나가시겠어요?\n(마지막 저장 내용이 유지됩니다)')) closeSheet();
+  } else {
+    closeSheet();
+  }
+}
 let _tt;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),2500);}
 
