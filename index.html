@@ -397,7 +397,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--lime);ba
 <div id="toast"></div>
 
 <script>
-const CT=[
+const CT_DEFAULT=[
   {label:'드럼 성인반',      sub:'40~60대 최대 7명',    icon:'🥁',color:'#6B5FCC',bg:'#EEECFB',tc:'#3B3480'},
   {label:'카혼/젬베 초등',   sub:'지역아동센터 10명+',   icon:'🪘',color:'#1A9068',bg:'#DDF4EC',tc:'#0A4D38'},
   {label:'초등 밴드반',      sub:'지역아동센터',          icon:'🎼',color:'#C4446E',bg:'#FCEAF1',tc:'#6F1F3D'},
@@ -407,6 +407,22 @@ const CT=[
   {label:'발달장애 효과악기', sub:'성인 6~12명',            icon:'🎶',color:'#4F9A10',bg:'#E8F5D8',tc:'#234E06'},
   {label:'특수학급',         sub:'초등 장애인 2~6명',      icon:'⭐',color:'#787870',bg:'#EFEFEB',tc:'#3C3C38'},
 ];
+// 커스텀 타입은 로컬에 저장 (Firebase와 별개로 기기 공통 사용)
+function loadCT(){
+  try{
+    const saved=localStorage.getItem('chida_custom_types');
+    if(saved){const custom=JSON.parse(saved);return [...CT_DEFAULT,...custom];}
+  }catch(e){}
+  return [...CT_DEFAULT];
+}
+function saveCustomTypes(ct){
+  const custom=ct.slice(CT_DEFAULT.length);
+  try{localStorage.setItem('chida_custom_types',JSON.stringify(custom));}catch(e){}
+}
+let CT=loadCT();
+// 유형 인덱스 안전하게 가져오기 (커스텀 포함)
+function getTypeIdx(label){const i=CT.findIndex(t=>t.label===label);return i>=0?i:0;}
+function getTypeByIdx(idx){return CT[idx]||CT[0];}
 const METHODS=[
   {label:'소리먼저 원칙',icon:'👂'},{label:'리듬 카드',    icon:'🃏'},
   {label:'몸으로 먼저', icon:'🙌'},{label:'앙상블 클릭',  icon:'⚡'},
@@ -567,7 +583,7 @@ function renderInstList(){
   const wrap=document.getElementById('inst-list-wrap');
   if(!insts.length){wrap.innerHTML=`<div class="empty"><div class="empty-icon">🏫</div><p>아직 기관이 없어요</p><small>오른쪽 위 초록 버튼으로 추가하세요</small></div>`;return;}
   wrap.innerHTML=[...insts].sort((a,b)=>(a.day||'').localeCompare(b.day||'')).map(inst=>{
-    const t=CT[inst.type]||CT[0];
+    const t=getTypeByIdx(inst.type);
     const cnt=logs.filter(l=>l.instId===inst.id).length;
     const last=logs.filter(l=>l.instId===inst.id).sort((a,b)=>b.date.localeCompare(a.date))[0];
     return `<div class="inst-row" onclick="goToDetail('${inst.id}')">
@@ -601,7 +617,7 @@ function renderInstList(){
 // ── 기관 상세 ──
 function renderDetail(){
   const inst=insts.find(i=>i.id===curInst);if(!inst)return;
-  const t=CT[inst.type]||CT[0];
+  const t=getTypeByIdx(inst.type);
   document.getElementById('detail-title').textContent=inst.name;
   const b=document.getElementById('detail-badge');
   b.textContent=t.icon+' '+t.label;b.style.background=t.bg;b.style.color=t.tc;
@@ -648,7 +664,7 @@ function renderDiary(){
   const ls=logs.filter(l=>l.instId===curInst).sort((a,b)=>a.date.localeCompare(b.date));
   const el=document.getElementById('detail-diary');
   if(!ls.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📄</div><p>기록이 없어요</p></div>`;return;}
-  const t=CT[inst.type]||CT[0];
+  const t=getTypeByIdx(inst.type);
   const lines=ls.map(log=>{
     const r=log.reactions||[];const avg=r.length?(r.reduce((a,b)=>a+b,0)/r.length).toFixed(1):'-';
     const worked=(log.methods||[]).filter(m=>log.methodEffect&&log.methodEffect[m]===1).map(m=>METHODS[m]?.label||'').join(', ');
@@ -735,7 +751,7 @@ async function deleteLog(id){
 
 // ── 기관 추가 ──
 function openAddInst(){
-  const typeOpts=CT.map((t,i)=>`<option value="${i}">${t.icon} ${t.label} — ${t.sub}</option>`).join('');
+  CT=loadCT();const typeOpts=CT.map((t,i)=>`<option value="${i}">${t.icon} ${t.label}${t.sub?' — '+t.sub:''}</option>`).join('');
   const dayOpts=DAYS.map(d=>`<option value="${d}">${d}요일</option>`).join('');
   document.getElementById('sheet-content').innerHTML=`
   <div class="sh-handle"></div>
@@ -743,7 +759,10 @@ function openAddInst(){
   <div class="form-wrap">
     <div class="form-block">
       <div class="field"><label>기관명</label><input type="text" id="a-name" placeholder="예: 한빛지역아동센터"></div>
-      <div class="field"><label>클래스 유형</label><div class="sel-wrap"><select id="a-type">${typeOpts}</select></div></div>
+      <div class="field"><label>클래스 유형</label>
+        <div class="sel-wrap"><select id="a-type" onchange="handleTypeSelect('a-type','a-type-custom')">${typeOpts}<option value="__custom__">✏️ 직접 입력...</option></select></div>
+        <input type="text" id="a-type-custom" placeholder="새 유형 이름 입력 (예: 복지관 밴드)" style="display:none;margin-top:6px">
+      </div>
       <div class="field-row">
         <div class="field"><label>수업 요일</label><div class="sel-wrap"><select id="a-day">${dayOpts}</select></div></div>
         <div class="field"><label>수업 시간</label><input type="time" id="a-time"></div>
@@ -757,10 +776,42 @@ function openAddInst(){
   </div>`;
   openSheet();
 }
+function handleTypeSelect(selId,inputId){
+  const sel=document.getElementById(selId);
+  const inp=document.getElementById(inputId);
+  if(sel.value==='__custom__'){inp.style.display='block';inp.focus();}
+  else{inp.style.display='none';}
+}
+function resolveType(selId,inputId){
+  const sel=document.getElementById(selId);
+  const inp=document.getElementById(inputId);
+  if(sel.value==='__custom__'){
+    const label=inp.value.trim();
+    if(!label)return null;
+    // 이미 있는 유형이면 그 인덱스 반환
+    const existing=CT.findIndex(t=>t.label===label);
+    if(existing>=0)return existing;
+    // 새 유형 추가 (색상 순환)
+    const colors=[
+      {color:'#C44E8A',bg:'#FCEAF4',tc:'#6F1F45'},
+      {color:'#2A8DC0',bg:'#E3F3FB',tc:'#0E5471'},
+      {color:'#9A7510',bg:'#FEF5DC',tc:'#5E4205'},
+      {color:'#C06828',bg:'#FDEEE8',tc:'#6B3010'},
+      {color:'#208060',bg:'#DDF4EC',tc:'#0A4D38'},
+    ];
+    const c=colors[CT.length%colors.length];
+    CT.push({label,sub:'',icon:'🎵',color:c.color,bg:c.bg,tc:c.tc});
+    saveCustomTypes(CT);
+    return CT.length-1;
+  }
+  return parseInt(sel.value);
+}
 async function saveInst(){
   const name=document.getElementById('a-name').value.trim();if(!name){document.getElementById('a-name').focus();return;}
+  const typeIdx=resolveType('a-type','a-type-custom');
+  if(typeIdx===null){document.getElementById('a-type-custom').focus();return;}
   const id=uid36();
-  const inst={id,name,type:parseInt(document.getElementById('a-type').value),day:document.getElementById('a-day').value,time:document.getElementById('a-time').value};
+  const inst={id,name,type:typeIdx,day:document.getElementById('a-day').value,time:document.getElementById('a-time').value};
   insts.push(inst);closeSheet();toast(`"${name}" 추가됐어요`);renderInstList();
   await queueOp({type:'set',col:'insts',id,data:inst});
 }
@@ -768,7 +819,7 @@ async function saveInst(){
 // ── 기관 편집 ──
 function openEditInst(instId){
   const inst=insts.find(i=>i.id===instId);if(!inst)return;
-  const typeOpts=CT.map((t,i)=>`<option value="${i}" ${inst.type===i?'selected':''}>${t.icon} ${t.label} — ${t.sub}</option>`).join('');
+  CT=loadCT();const typeOpts=CT.map((t,i)=>`<option value="${i}" ${inst.type===i?'selected':''}>${t.icon} ${t.label}${t.sub?' — '+t.sub:''}</option>`).join('');
   const dayOpts=DAYS.map(d=>`<option value="${d}" ${inst.day===d?'selected':''}>${d}요일</option>`).join('');
   document.getElementById('sheet-content').innerHTML=`
   <div class="sh-handle"></div>
@@ -780,7 +831,10 @@ function openEditInst(instId){
   <div class="form-wrap">
     <div class="form-block">
       <div class="field"><label>기관명</label><input type="text" id="e-name" value="${inst.name}"></div>
-      <div class="field"><label>클래스 유형</label><div class="sel-wrap"><select id="e-type">${typeOpts}</select></div></div>
+      <div class="field"><label>클래스 유형</label>
+        <div class="sel-wrap"><select id="e-type" onchange="handleTypeSelect('e-type','e-type-custom')">${typeOpts}<option value="__custom__">✏️ 직접 입력...</option></select></div>
+        <input type="text" id="e-type-custom" placeholder="새 유형 이름 입력 (예: 복지관 밴드)" style="display:none;margin-top:6px">
+      </div>
       <div class="field-row">
         <div class="field"><label>수업 요일</label><div class="sel-wrap"><select id="e-day">${dayOpts}</select></div></div>
         <div class="field"><label>수업 시간</label><input type="time" id="e-time" value="${inst.time||''}"></div>
@@ -797,7 +851,9 @@ function openEditInst(instId){
 async function saveEditInst(instId){
   const name=document.getElementById('e-name').value.trim();if(!name){document.getElementById('e-name').focus();return;}
   const idx=insts.findIndex(i=>i.id===instId);if(idx<0)return;
-  const inst={...insts[idx],name,type:parseInt(document.getElementById('e-type').value),day:document.getElementById('e-day').value,time:document.getElementById('e-time').value};
+  const typeIdx=resolveType('e-type','e-type-custom');
+  if(typeIdx===null){document.getElementById('e-type-custom').focus();return;}
+  const inst={...insts[idx],name,type:typeIdx,day:document.getElementById('e-day').value,time:document.getElementById('e-time').value};
   insts[idx]=inst;
   closeSheet();toast(`"${name}" 수정됐어요`);renderInstList();
   await queueOp({type:'set',col:'insts',id:instId,data:inst});
@@ -835,7 +891,7 @@ function renderWeek(){
     html+=`<div class="wday-label ${isToday?'today-label':''}">${d}요일 <span style="font-size:11px;font-weight:500;color:var(--text3)">${dd.getMonth()+1}/${dd.getDate()}</span>${isToday?'<span class="today-pill">오늘</span>':''}</div>`;
     if(!is.length){html+=`<div style="padding:0 18px 10px;font-size:13px;color:var(--text3)">수업 없음</div>`;}
     else is.forEach(inst=>{
-      const t=CT[inst.type]||CT[0];const log=dLogs.find(l=>l.instId===inst.id);
+      const t=getTypeByIdx(inst.type);const log=dLogs.find(l=>l.instId===inst.id);
       html+=`<div class="card card-tap" style="margin:0 14px 8px" onclick="${log?`openLog('${log.id}')`:`goDetailLog('${inst.id}')`}">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:40px;height:40px;border-radius:11px;background:${t.bg};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${t.icon}</div>
