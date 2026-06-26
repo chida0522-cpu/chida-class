@@ -580,9 +580,19 @@ function renderInstList(){
           ${inst.day?`<span>${inst.day}요일${inst.time?' '+inst.time:''}</span>`:''}
         </div>
       </div>
-      <div class="inst-right">
-        <div class="inst-count">${cnt}</div>
-        <div class="inst-count-lbl">${last?last.date.slice(5).replace('-','/'):'없음'}</div>
+      <div class="inst-right" style="flex-direction:row;align-items:center;gap:10px">
+        <div style="text-align:right">
+          <div class="inst-count">${cnt}</div>
+          <div class="inst-count-lbl">${last?last.date.slice(5).replace('-','/'):'없음'}</div>
+        </div>
+        <button onclick="event.stopPropagation();openEditInst('${inst.id}')"
+          style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:none;
+          cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:var(--text2);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
       </div>
     </div>`;
   }).join('');
@@ -753,6 +763,59 @@ async function saveInst(){
   const inst={id,name,type:parseInt(document.getElementById('a-type').value),day:document.getElementById('a-day').value,time:document.getElementById('a-time').value};
   insts.push(inst);closeSheet();toast(`"${name}" 추가됐어요`);renderInstList();
   await queueOp({type:'set',col:'insts',id,data:inst});
+}
+
+// ── 기관 편집 ──
+function openEditInst(instId){
+  const inst=insts.find(i=>i.id===instId);if(!inst)return;
+  const typeOpts=CT.map((t,i)=>`<option value="${i}" ${inst.type===i?'selected':''}>${t.icon} ${t.label} — ${t.sub}</option>`).join('');
+  const dayOpts=DAYS.map(d=>`<option value="${d}" ${inst.day===d?'selected':''}>${d}요일</option>`).join('');
+  document.getElementById('sheet-content').innerHTML=`
+  <div class="sh-handle"></div>
+  <div class="sh-hd">
+    <button onclick="closeSheet()" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);padding:6px 12px;border:1.5px solid var(--border2);border-radius:var(--radius-sm);font-family:inherit">✕ 취소</button>
+    <div class="sh-title">기관 편집</div>
+    <button onclick="deleteInst('${inst.id}')" style="background:none;border:1.5px solid rgba(217,64,64,.3);border-radius:var(--radius-sm);color:#D94040;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">삭제</button>
+  </div>
+  <div class="form-wrap">
+    <div class="form-block">
+      <div class="field"><label>기관명</label><input type="text" id="e-name" value="${inst.name}"></div>
+      <div class="field"><label>클래스 유형</label><div class="sel-wrap"><select id="e-type">${typeOpts}</select></div></div>
+      <div class="field-row">
+        <div class="field"><label>수업 요일</label><div class="sel-wrap"><select id="e-day">${dayOpts}</select></div></div>
+        <div class="field"><label>수업 시간</label><input type="time" id="e-time" value="${inst.time||''}"></div>
+      </div>
+    </div>
+    <button class="btn-main" onclick="saveEditInst('${inst.id}')">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 6 9 17 4 12"/></svg>
+      저장하기
+    </button>
+    <div style="height:8px"></div>
+  </div>`;
+  openSheet();
+}
+async function saveEditInst(instId){
+  const name=document.getElementById('e-name').value.trim();if(!name){document.getElementById('e-name').focus();return;}
+  const idx=insts.findIndex(i=>i.id===instId);if(idx<0)return;
+  const inst={...insts[idx],name,type:parseInt(document.getElementById('e-type').value),day:document.getElementById('e-day').value,time:document.getElementById('e-time').value};
+  insts[idx]=inst;
+  closeSheet();toast(`"${name}" 수정됐어요`);renderInstList();
+  await queueOp({type:'set',col:'insts',id:instId,data:inst});
+}
+async function deleteInst(instId){
+  const inst=insts.find(i=>i.id===instId);
+  const logCnt=logs.filter(l=>l.instId===instId).length;
+  const msg=logCnt>0
+    ?`"${inst.name}"을 삭제하면 수업 기록 ${logCnt}개도 모두 삭제됩니다.\n정말 삭제할까요?`
+    :`"${inst.name}"을 삭제할까요?`;
+  if(!confirm(msg))return;
+  // 연결된 로그도 삭제
+  const relLogs=logs.filter(l=>l.instId===instId);
+  logs=logs.filter(l=>l.instId!==instId);
+  insts=insts.filter(i=>i.id!==instId);
+  closeSheet();toast(`삭제됐어요`);renderInstList();
+  await queueOp({type:'del',col:'insts',id:instId});
+  for(const log of relLogs) await queueOp({type:'del',col:'logs',id:log.id});
 }
 
 // ── 이번 주 ──
