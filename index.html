@@ -787,7 +787,12 @@ async function saveLog(){
 }
 async function deleteLog(id){
   if(!confirm('이 기록을 삭제할까요?'))return;
-  logs=logs.filter(l=>l.id!==id);closeSheet();toast('삭제됐어요');renderLogs();
+  const deleted=logs.find(l=>l.id===id);
+  if(deleted)pushUndo({type:'deleteLog',data:{...deleted}});
+  logs=logs.filter(l=>l.id!==id);
+  closeSheet();
+  toast('삭제됐어요 — Cmd+Z로 복구',true);
+  renderLogs();
   await queueOp({type:'del',col:'logs',id});
 }
 
@@ -909,13 +914,16 @@ async function deleteInst(instId){
     ?`"${inst.name}"을 삭제하면 수업 기록 ${logCnt}개도 모두 삭제됩니다.\n정말 삭제할까요?`
     :`"${inst.name}"을 삭제할까요?`;
   if(!confirm(msg))return;
-  // 연결된 로그도 삭제
   const relLogs=logs.filter(l=>l.instId===instId);
+  const deletedInst=insts.find(i=>i.id===instId);
+  if(deletedInst)pushUndo({type:'deleteInst',data:{inst:{...deletedInst},relLogs:[...relLogs]}});
   logs=logs.filter(l=>l.instId!==instId);
   insts=insts.filter(i=>i.id!==instId);
-  closeSheet();toast(`삭제됐어요`);renderInstList();
+  closeSheet();
+  toast('"'+deletedInst?.name+'" 삭제됐어요 — Cmd+Z로 복구',true);
+  renderInstList();
   await queueOp({type:'del',col:'insts',id:instId});
-  for(const log of relLogs) await queueOp({type:'del',col:'logs',id:log.id});
+  for(const log of relLogs)await queueOp({type:'del',col:'logs',id:log.id});
 }
 
 // ── 이번 주 ──
@@ -1000,8 +1008,59 @@ function confirmClose(){
     closeSheet();
   }
 }
+// ── 실행취소(Undo) ──
+let _undoStack = []; // {type, data}
+const MAX_UNDO = 20;
+
+function pushUndo(action){
+  _undoStack.push(action);
+  if(_undoStack.length > MAX_UNDO) _undoStack.shift();
+}
+
+async function undoLast(){
+  if(!_undoStack.length){ toast('되돌릴 작업이 없어요'); return; }
+  const action = _undoStack.pop();
+  if(action.type === 'deleteLog'){
+    const log = action.data;
+    logs.push(log);
+    toast('"' + (log.song||'기록') + '" 복구됐어요 ✓');
+    if(curInst === log.instId) renderLogs();
+    else renderInstList();
+    await queueOp({type:'set', col:'logs', id:log.id, data:log});
+  } else if(action.type === 'deleteInst'){
+    const {inst, relLogs} = action.data;
+    insts.push(inst);
+    logs.push(...relLogs);
+    toast('"' + inst.name + '" 복구됐어요 ✓');
+    renderInstList();
+    await queueOp({type:'set', col:'insts', id:inst.id, data:inst});
+    for(const log of relLogs) await queueOp({type:'set', col:'logs', id:log.id, data:log});
+  }
+}
+
+// Cmd+Z / Ctrl+Z 단축키
+document.addEventListener('keydown', e => {
+  if((e.metaKey || e.ctrlKey) && e.key === 'z'){
+    // 텍스트 입력 중에는 기본 동작 유지
+    const tag = document.activeElement?.tagName;
+    if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+    e.preventDefault();
+    undoLast();
+  }
+});
+
 let _tt;
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),2500);}
+function toast(msg, undoable=false){
+  const el=document.getElementById('toast');
+  if(undoable){
+    el.innerHTML = msg + ' <span onclick="undoLast()" style="margin-left:8px;text-decoration:underline;cursor:pointer;opacity:.85">되돌리기</span>';
+  } else {
+    el.textContent = msg;
+  }
+  el.classList.add('show');
+  clearTimeout(_tt);
+  _tt=setTimeout(()=>el.classList.remove('show'),4000);
+}
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
