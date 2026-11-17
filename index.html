@@ -278,6 +278,63 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--lime);ba
 .sel-wrap::after{content:'▾';position:absolute;right:13px;top:50%;
   transform:translateY(-50%);color:var(--text3);pointer-events:none;font-size:12px}
 .sel-wrap select{padding-right:30px}
+
+/* 출발 카드 */
+.dep-card{margin:12px 14px 6px;background:var(--surface);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:14px 14px 14px 16px;display:flex;align-items:center;gap:12px}
+.dep-card.soon{background:var(--amber-bg)}
+.dep-card.go{background:var(--lime-bg);box-shadow:0 0 0 2px var(--lime) inset,var(--shadow)}
+.dep-info{flex:1;min-width:0}
+.dep-k{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.03em}
+.dep-card.go .dep-k{color:var(--lime-tc)}.dep-card.soon .dep-k{color:var(--amber-tc)}
+.dep-t{font-size:16px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.dep-s{font-size:12px;color:var(--text2);margin-top:2px}
+.nav-go{background:var(--lime);color:#fff;border:none;border-radius:12px;padding:11px 14px;
+  font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(107,191,18,.3)}
+.nav-go.sub{background:var(--surface2);color:var(--text);box-shadow:none;border:1.5px solid var(--border2)}
+.nav-mini{width:34px;height:34px;border-radius:50%;border:none;background:var(--lime-bg);
+  font-size:16px;cursor:pointer;flex-shrink:0}
+
+/* 위치 입력 */
+.loc-row{display:flex;gap:8px}.loc-row input{flex:1;min-width:0}
+.loc-btn{flex-shrink:0;background:var(--surface2);border:1.5px solid var(--border2);border-radius:var(--radius-sm);
+  padding:0 14px;font-size:13px;font-weight:700;font-family:inherit;color:var(--text);cursor:pointer}
+.loc-status{font-size:12px;color:var(--text3);margin-top:6px}
+.loc-status.ok{color:var(--lime-tc);font-weight:600}
+.loc-status.warn{color:var(--amber-tc)}
+.loc-res{margin-top:6px;border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden}
+.loc-res div{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border);cursor:pointer;background:var(--surface)}
+.loc-res div:last-child{border-bottom:none}.loc-res div:active{background:var(--surface2)}
+.loc-res small{display:block;color:var(--text2);font-size:11px;margin-top:2px}
+
+/* 토글 */
+.tgl-row{display:flex;align-items:center;gap:12px;padding:4px 0 12px;cursor:pointer}
+.tgl-row span{flex:1;font-size:13px;font-weight:600;color:var(--text)}
+.tgl-row small{display:block;font-size:11px;color:var(--text2);font-weight:500;margin-top:2px}
+.tgl{width:46px;height:28px;border-radius:14px;background:var(--surface3);position:relative;flex-shrink:0;transition:background .15s}
+.tgl::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
+  background:#fff;box-shadow:var(--shadow-sm);transition:transform .15s}
+.tgl.on{background:var(--lime)}.tgl.on::after{transform:translateX(18px)}
+.sc-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.sc-row:last-child{border-bottom:none}
+.sc-time{font-weight:800;color:var(--lime-tc);min-width:64px}
+.sc-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.steps{font-size:12px;color:var(--text2);line-height:1.8;padding-left:18px;margin:8px 0 10px}
+.hr{height:1px;background:var(--border);margin:16px 0}
+
+/* 길안내 실행 화면 */
+#navgo{position:fixed;inset:0;z-index:250;background:rgba(24,24,15,.55);backdrop-filter:blur(4px);
+  display:none;align-items:flex-end;justify-content:center}
+#navgo.open{display:flex}
+.ng-box{background:var(--surface);width:100%;max-width:480px;border-radius:22px 22px 0 0;
+  padding:26px 20px calc(22px + var(--safe-b));text-align:center;animation:slideUp .28s cubic-bezier(.32,.72,0,1)}
+.ng-emoji{font-size:44px;margin-bottom:6px}
+.ng-title{font-size:20px;font-weight:800;letter-spacing:-.03em}
+.ng-sub{font-size:13px;color:var(--text2);margin:4px 0 18px;line-height:1.5}
+.ng-alt{display:flex;gap:8px;justify-content:center;margin:12px 0 8px;flex-wrap:wrap}
+.ng-alt button{font-size:12px;font-weight:600;padding:7px 12px;border-radius:20px;border:1.5px solid var(--border2);
+  background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit}
 </style>
 </head>
 <body>
@@ -316,6 +373,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--lime);ba
           <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       </div>
+      <div id="dep-wrap"></div>
       <div id="inst-list-wrap"></div>
     </div>
 
@@ -349,6 +407,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--lime);ba
           <div class="ph-sub" id="week-sub"></div>
         </div>
       </div>
+      <div id="dep-wrap-w"></div>
       <div id="week-content"></div>
     </div>
 
@@ -357,6 +416,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--lime);ba
       <div class="ph"><div class="ph-title">설정</div></div>
       <div style="padding:14px 14px 0">
         <div id="user-info-card" class="setting-card"></div>
+        <div id="nav-settings-card" class="setting-card"></div>
         <div class="setting-card">
           <div class="setting-title">☁️ 동기화 상태</div>
           <div id="sync-detail" style="font-size:13px;color:var(--text2);line-height:1.6">확인 중…</div>
@@ -395,6 +455,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--lime);ba
 <div id="sov" onclick="confirmClose()"></div>
 <div id="sheet"><div id="sheet-content"></div></div>
 <div id="toast"></div>
+<div id="navgo" onclick="if(event.target===this)hideNavOverlay()">
+  <div class="ng-box">
+    <div class="ng-emoji">🚗</div>
+    <div class="ng-title" id="ng-title"></div>
+    <div class="ng-sub" id="ng-sub"></div>
+    <button class="btn-main" id="ng-start" onclick="launchFromOverlay()">🧭 길안내 시작</button>
+    <div class="ng-alt" id="ng-alt"></div>
+    <button class="btn-ghost" style="width:100%" onclick="hideNavOverlay()">닫기</button>
+  </div>
+</div>
 
 <script>
 const CT_DEFAULT=[
@@ -560,7 +630,7 @@ function navTo(page){
   curPage=page;pageStack=[page];
   if(page==='week')renderWeek();
   if(page==='insts')renderInstList();
-  if(page==='settings')renderSettingsUser();
+  if(page==='settings'){renderSettingsUser();renderNavSettings();}
 }
 function goToDetail(id){
   curInst=id;pageStack.push('detail');curPage='detail';
@@ -574,11 +644,12 @@ function goBack(){
   document.getElementById('page-'+prev).classList.add('active');
   curPage=prev;
   if(prev!=='detail')document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===prev));
-  if(prev==='insts')renderInstList();if(prev==='settings')renderSettingsUser();
+  if(prev==='insts')renderInstList();if(prev==='settings'){renderSettingsUser();renderNavSettings();}
 }
 
 // ── 기관 목록 ──
 function renderInstList(){
+  renderDep();
   document.getElementById('inst-summary').textContent=`기관 ${insts.length}곳 · 기록 ${logs.length}개`;
   const wrap=document.getElementById('inst-list-wrap');
   if(!insts.length){wrap.innerHTML=`<div class="empty"><div class="empty-icon">🏫</div><p>아직 기관이 없어요</p><small>오른쪽 위 초록 버튼으로 추가하세요</small></div>`;return;}
@@ -686,7 +757,7 @@ function openLog(logId){
   _eid=logId;const log=logId?logs.find(l=>l.id===logId):{};
   _cr=log.reactions?[...log.reactions]:[0,0,0,0,0];
   _cm=log.methods?[...log.methods]:[];_cme=log.methodEffect?{...log.methodEffect}:{};_lc=null;
-  const today=new Date().toISOString().slice(0,10);
+  const today=ymd(new Date());
   const rxHtml=REACTIONS.map((r,i)=>{const v=_cr[i]||0;const stars=[1,2,3,4,5].map(s=>`<span class="star ${s<=v?'on':''}" onclick="setStar(${i},${s})">★</span>`).join('');return `<div class="rx-row"><span class="rx-label"><em>${r.icon}</em>${r.label}</span><div class="stars">${stars}</div></div>`;}).join('');
   const chipHtml=METHODS.map((m,i)=>{const sel=_cm.includes(i);const eff=_cme[i];const cls='chip'+(sel?' sel':'')+(sel&&eff===1?' worked':sel&&eff===-1?' failed':'');return `<div class="${cls}" data-mi="${i}" onclick="toggleChip(${i},this)"><em>${m.icon}</em>${m.label}</div>`;}).join('');
   document.getElementById('sheet-content').innerHTML=`
@@ -817,6 +888,7 @@ function openAddInst(){
         <div class="field"><label>수업 시간</label><input type="time" id="a-time"></div>
       </div>
     </div>
+    ${locFormHtml('a')}
     <button class="btn-main" onclick="saveInst()">
       <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       추가하기
@@ -860,7 +932,7 @@ async function saveInst(){
   const typeIdx=resolveType('a-type','a-type-custom');
   if(typeIdx===null){document.getElementById('a-type-custom').focus();return;}
   const id=uid36();
-  const inst={id,name,type:typeIdx,day:document.getElementById('a-day').value,time:document.getElementById('a-time').value};
+  const inst={id,name,type:typeIdx,day:document.getElementById('a-day').value,time:document.getElementById('a-time').value,...readLocForm('a')};
   insts.push(inst);closeSheet();toast(`"${name}" 추가됐어요`);renderInstList();
   await queueOp({type:'set',col:'insts',id,data:inst});
 }
@@ -889,6 +961,7 @@ function openEditInst(instId){
         <div class="field"><label>수업 시간</label><input type="time" id="e-time" value="${inst.time||''}"></div>
       </div>
     </div>
+    ${locFormHtml('e',inst)}
     <button class="btn-main" onclick="saveEditInst('${inst.id}')">
       <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 6 9 17 4 12"/></svg>
       저장하기
@@ -902,7 +975,7 @@ async function saveEditInst(instId){
   const idx=insts.findIndex(i=>i.id===instId);if(idx<0)return;
   const typeIdx=resolveType('e-type','e-type-custom');
   if(typeIdx===null){document.getElementById('e-type-custom').focus();return;}
-  const inst={...insts[idx],name,type:typeIdx,day:document.getElementById('e-day').value,time:document.getElementById('e-time').value};
+  const inst={...insts[idx],name,type:typeIdx,day:document.getElementById('e-day').value,time:document.getElementById('e-time').value,...readLocForm('e')};
   insts[idx]=inst;
   closeSheet();toast(`"${name}" 수정됐어요`);renderInstList();
   await queueOp({type:'set',col:'insts',id:instId,data:inst});
@@ -933,13 +1006,14 @@ function renderWeek(){
   const sun=new Date(mon);sun.setDate(mon.getDate()+6);
   document.getElementById('week-sub').textContent=`${mon.getMonth()+1}월 ${mon.getDate()}일 — ${sun.getMonth()+1}월 ${sun.getDate()}일`;
   const dayMap={};insts.forEach(inst=>{if(inst.day){if(!dayMap[inst.day])dayMap[inst.day]=[];dayMap[inst.day].push(inst);}});
-  const wLogs=logs.filter(l=>{const d=new Date(l.date);return d>=mon&&d<=sun;});
-  const todayStr=today.toISOString().slice(0,10);
+  renderDep();
+  const wLogs=logs.filter(l=>l.date>=ymd(mon)&&l.date<=ymd(sun));
+  const todayStr=ymd(today);
   const korDow=['일','월','화','수','목','금','토'][today.getDay()];
   let html='';
   ['월','화','수','목','금','토','일'].forEach((d,di)=>{
-    const dd=new Date(mon);dd.setDate(mon.getDate()+di);const ddStr=dd.toISOString().slice(0,10);
-    const isToday=d===korDow&&ddStr===todayStr;const is=dayMap[d+'요일']||[];const dLogs=wLogs.filter(l=>l.date===ddStr);
+    const dd=new Date(mon);dd.setDate(mon.getDate()+di);const ddStr=ymd(dd);
+    const isToday=d===korDow&&ddStr===todayStr;const is=[...(dayMap[d]||[]),...(dayMap[d+'요일']||[])];const dLogs=wLogs.filter(l=>l.date===ddStr);
     html+=`<div class="wday-label ${isToday?'today-label':''}">${d}요일 <span style="font-size:11px;font-weight:500;color:var(--text3)">${dd.getMonth()+1}/${dd.getDate()}</span>${isToday?'<span class="today-pill">오늘</span>':''}</div>`;
     if(!is.length){html+=`<div style="padding:0 18px 10px;font-size:13px;color:var(--text3)">수업 없음</div>`;}
     else is.forEach(inst=>{
@@ -948,6 +1022,7 @@ function renderWeek(){
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:40px;height:40px;border-radius:11px;background:${t.bg};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${t.icon}</div>
           <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700">${inst.name}</div>${inst.time?`<div style="font-size:12px;color:var(--text2)">${inst.time}</div>`:''}</div>
+          ${hasPlace(inst)?`<button class="nav-mini" title="길안내" onclick="event.stopPropagation();showNavOverlay('${inst.id}')">🧭</button>`:''}
           ${log?`<span style="font-size:11px;font-weight:700;background:var(--lime-bg);color:var(--lime-tc);padding:4px 10px;border-radius:20px">기록됨 ✓</span>`:`<span style="font-size:11px;font-weight:600;background:var(--surface2);color:var(--text3);padding:4px 10px;border-radius:20px">미기록</span>`}
         </div>
         ${log&&log.song?`<div style="font-size:12px;color:var(--text2);margin-top:8px;padding-left:50px">🎵 ${log.song}</div>`:''}
@@ -974,6 +1049,7 @@ function renderSettingsUser(){
     <div style="font-size:12px;color:var(--text2)">${curUser.email}</div></div>
   </div>
   <button class="btn-ghost" onclick="logOut()" style="width:100%">로그아웃</button>`;
+  renderShortcutList();
   document.getElementById('sync-detail').innerHTML=`동기화 상태: <strong>${syncStatus}</strong><br>기관 ${insts.length}곳 · 기록 ${logs.length}개 클라우드 저장됨`;
 }
 async function importLegacy(e){
@@ -1063,6 +1139,345 @@ function toast(msg, undoable=false){
 }
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+<script>
+// ════════════════════════════════════════════════════════════
+// 🧭 자동 길안내 — 일정(요일·시간) + 위치 + 이동시간 → 출발 시각에 내비 실행
+// ════════════════════════════════════════════════════════════
+const NAV_APPS={kakaonavi:'카카오내비',kakaomap:'카카오맵',naver:'네이버지도',tmap:'티맵'};
+const DOW_IDX={'일':0,'월':1,'화':2,'수':3,'목':4,'금':5,'토':6};
+const ICS_DAY=['SU','MO','TU','WE','TH','FR','SA'];
+const pad2=n=>String(n).padStart(2,'0');
+function ymd(d){return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;}
+function hm(d){return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;}
+function escH(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const enc=encodeURIComponent;
+
+// ── 설정 (기기별 저장) ──
+function navCfg(){
+  let c={};try{c=JSON.parse(localStorage.getItem('chida_nav')||'{}');}catch(e){}
+  return {app:c.app||'kakaonavi',key:c.key||'',buffer:Number.isFinite(c.buffer)?c.buffer:10,auto:c.auto!==false};
+}
+function saveNavCfg(patch){
+  const c={...navCfg(),...patch};
+  try{localStorage.setItem('chida_nav',JSON.stringify(c));}catch(e){}
+  renderDep();renderShortcutList();
+  if(c.app==='kakaonavi'&&c.key)loadKakaoSdk().catch(()=>{});
+  return c;
+}
+
+// ── 일정 계산 ──
+function hasPlace(inst){return !!(inst&&((inst.lat&&inst.lng)||inst.addr));}
+function travelMin(inst){return inst.travel>0?inst.travel:30;}
+function leadMin(inst){return travelMin(inst)+navCfg().buffer;}
+function nextOccur(inst,from=new Date()){
+  const di=DOW_IDX[(inst.day||'').replace('요일','')];
+  if(di==null||!/^\d{1,2}:\d{2}$/.test(inst.time||''))return null;
+  const [h,m]=inst.time.split(':').map(Number);
+  for(let k=0;k<8;k++){const t=new Date(from);t.setDate(from.getDate()+k);t.setHours(h,m,0,0);if(t.getDay()===di&&t>from)return t;}
+  return null;
+}
+function tripFor(inst,now=new Date()){
+  const start=nextOccur(inst,now);if(!start)return null;
+  const lead=leadMin(inst);
+  return {inst,start,dep:new Date(start.getTime()-lead*60000),lead};
+}
+function allTrips(now=new Date()){return insts.map(i=>tripFor(i,now)).filter(Boolean).sort((a,b)=>a.start-b.start);}
+function relTime(ms){
+  const m=Math.round(ms/60000);if(m<60)return `${m}분`;
+  if(m<1440)return `${Math.floor(m/60)}시간${m%60?' '+m%60+'분':''}`;
+  return `${Math.floor(m/1440)}일`;
+}
+function dayWord(d){
+  const t=new Date();t.setHours(0,0,0,0);const x=new Date(d);x.setHours(0,0,0,0);
+  const diff=Math.round((x-t)/86400000);
+  return diff===0?'오늘':diff===1?'내일':['일','월','화','수','목','금','토'][d.getDay()]+'요일';
+}
+
+// ── 다음 출발 카드 ──
+function renderDep(){
+  const html=depCardHtml();
+  ['dep-wrap','dep-wrap-w'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=html;});
+}
+function depCardHtml(){
+  const now=new Date();const tr=allTrips(now)[0];if(!tr)return '';
+  const {inst,start,dep}=tr;const left=dep-now;
+  const cls=left<=0?'go':left<=30*60000?'soon':'';
+  const k=left<=0?'🚗 지금 출발하세요':left<=30*60000?`⏰ ${relTime(left)} 뒤 출발`:'다음 출발';
+  const when=`${dayWord(start)} ${hm(start)} 수업 · <b>${hm(dep)} 출발</b>${left>30*60000?` (${relTime(left)} 후)`:''}`;
+  const btn=hasPlace(inst)
+    ?`<button class="nav-go" onclick="showNavOverlay('${inst.id}')">🧭 길안내</button>`
+    :`<button class="nav-go sub" onclick="openEditInst('${inst.id}')">📍 위치 설정</button>`;
+  return `<div class="dep-card ${cls}"><div class="dep-info">
+    <div class="dep-k">${k}</div><div class="dep-t">${escH(inst.name)}</div>
+    <div class="dep-s">${when}${hasPlace(inst)?'':' · 위치 미설정'}</div></div>${btn}</div>`;
+}
+
+// ── 기관 폼: 위치 블록 ──
+function locFormHtml(p,inst={}){
+  const has=inst.lat&&inst.lng;
+  return `<div class="form-block">
+    <div class="fb-label"><em>📍</em>위치 · 자동 길안내</div>
+    <div class="field"><label>주소 또는 장소명</label>
+      <div class="loc-row"><input type="text" id="${p}-addr" value="${escH(inst.addr||'')}" placeholder="예: 한빛지역아동센터 / 마포구 월드컵로 1"
+        oninput="locDirty('${p}')" onkeydown="if(event.key==='Enter'){event.preventDefault();locSearch('${p}')}">
+        <button class="loc-btn" onclick="locSearch('${p}')">찾기</button></div>
+      <div id="${p}-res"></div>
+      <div class="loc-status ${has?'ok':''}" id="${p}-locst">${has?'✓ 길안내 위치 저장됨':'‘찾기’로 위치를 고르거나, 현장에서 아래 버튼을 누르세요'}</div>
+      <button class="btn-ghost" style="margin-top:8px;width:100%" onclick="locHere('${p}')">📍 지금 있는 곳을 이 기관 위치로</button>
+      <input type="hidden" id="${p}-lat" value="${inst.lat||''}"><input type="hidden" id="${p}-lng" value="${inst.lng||''}">
+    </div>
+    <div class="field-row">
+      <div class="field"><label>이동 시간 (분)</label><input type="number" inputmode="numeric" id="${p}-travel" value="${inst.travel||''}" placeholder="30"></div>
+      <div class="field"><label>수업 길이 (분)</label><input type="number" inputmode="numeric" id="${p}-dur" value="${inst.dur||''}" placeholder="60"></div>
+    </div>
+  </div>`;
+}
+function readLocForm(p){
+  const v=id=>document.getElementById(`${p}-${id}`)?.value.trim()||'';
+  const lat=parseFloat(v('lat')),lng=parseFloat(v('lng'));
+  return {addr:v('addr'),lat:Number.isFinite(lat)?lat:null,lng:Number.isFinite(lng)?lng:null,
+          travel:parseInt(v('travel'))||null,dur:parseInt(v('dur'))||null};
+}
+function setLoc(p,lat,lng,label){
+  document.getElementById(`${p}-lat`).value=lat;document.getElementById(`${p}-lng`).value=lng;
+  const st=document.getElementById(`${p}-locst`);st.className='loc-status ok';st.textContent='✓ '+label;
+  document.getElementById(`${p}-res`).innerHTML='';
+}
+function locDirty(p){
+  if(!document.getElementById(`${p}-lat`).value)return;
+  const st=document.getElementById(`${p}-locst`);st.className='loc-status warn';
+  st.textContent='주소가 바뀌었어요 — ‘찾기’로 위치를 다시 맞춰주세요 (지금은 이전 위치로 안내)';
+}
+function locHere(p){
+  if(!navigator.geolocation){toast('이 기기는 위치를 지원하지 않아요');return;}
+  toast('현재 위치 확인 중…');
+  navigator.geolocation.getCurrentPosition(
+    pos=>{setLoc(p,pos.coords.latitude.toFixed(6),pos.coords.longitude.toFixed(6),'현재 위치로 저장됨');toast('위치 저장됐어요 — 저장하기를 눌러주세요');},
+    err=>toast(err.code===1?'위치 권한을 허용해주세요':'위치를 가져오지 못했어요'),
+    {enableHighAccuracy:true,timeout:15000,maximumAge:0});
+}
+async function locSearch(p){
+  const q=document.getElementById(`${p}-addr`).value.trim();if(!q)return;
+  const {key}=navCfg();
+  if(!key){toast('설정 › 자동 길안내에 카카오 키를 넣으면 검색돼요');return;}
+  try{await loadKakaoMaps(key);}catch(e){toast('카카오 지도 로드 실패 — 키와 도메인 등록을 확인하세요');return;}
+  const box=document.getElementById(`${p}-res`);
+  const show=list=>{
+    if(!list.length){box.innerHTML='';toast('검색 결과가 없어요');return;}
+    window._locRes=list;
+    box.innerHTML='<div class="loc-res">'+list.slice(0,6).map((r,i)=>`<div onclick="pickLoc('${p}',${i})">${escH(r.name)}<small>${escH(r.addr)}</small></div>`).join('')+'</div>';
+  };
+  new kakao.maps.services.Places().keywordSearch(q,(data,status)=>{
+    if(status===kakao.maps.services.Status.OK&&data.length)
+      return show(data.map(d=>({name:d.place_name,addr:d.road_address_name||d.address_name,lat:d.y,lng:d.x})));
+    new kakao.maps.services.Geocoder().addressSearch(q,(d2,s2)=>{
+      show(s2===kakao.maps.services.Status.OK?d2.map(d=>({name:d.address_name,addr:d.road_address?.address_name||d.address_name,lat:d.y,lng:d.x})):[]);
+    });
+  });
+}
+function pickLoc(p,i){
+  const r=window._locRes[i];if(!r)return;
+  document.getElementById(`${p}-addr`).value=r.addr||r.name;
+  setLoc(p,(+r.lat).toFixed(6),(+r.lng).toFixed(6),r.name);
+}
+
+// ── 카카오 SDK ──
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+let _kNavi=null,_kMaps=null;
+function loadKakaoSdk(){
+  if(window.Kakao)return Promise.resolve();
+  return _kNavi||(_kNavi=loadScript('https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js').catch(e=>{_kNavi=null;throw e;}));
+}
+function loadKakaoMaps(key){
+  if(window.kakao?.maps?.services)return Promise.resolve();
+  return _kMaps||(_kMaps=loadScript(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${enc(key)}&libraries=services&autoload=false`)
+    .then(()=>new Promise(r=>kakao.maps.load(r))).catch(e=>{_kMaps=null;throw e;}));
+}
+
+// ── 목적지 → 내비 앱 실행 ──
+// t = {n:이름, y:위도, x:경도, a:주소}
+function targetOf(inst){return {n:inst.name,y:inst.lat||'',x:inst.lng||'',a:inst.addr||''};}
+function schemeUrl(t,app){   // 앱을 바로 여는 주소 (단축어용)
+  const has=t.y&&t.x,q=t.a||t.n;
+  if(app==='naver')return has?`nmap://navigation?dlat=${t.y}&dlng=${t.x}&dname=${enc(t.n)}&appname=${enc(location.host||'chida')}`
+                              :`nmap://search?query=${enc(q)}&appname=${enc(location.host||'chida')}`;
+  if(app==='tmap'&&has)return `tmap://route?rGoName=${enc(t.n)}&rGoX=${t.x}&rGoY=${t.y}`;
+  if(app==='kakaomap'&&has)return `kakaomap://route?ep=${t.y},${t.x}&by=CAR`;
+  return webUrl(t);
+}
+function webUrl(t){   // 카카오맵 앱이 있으면 앱으로, 없으면 웹으로 열림
+  return (t.y&&t.x)?`https://map.kakao.com/link/to/${enc(t.n)},${t.y},${t.x}`:`https://map.kakao.com/link/search/${enc(t.a||t.n)}`;
+}
+function launchNav(t,app){
+  const c=navCfg();app=app||c.app;
+  if(app==='kakaonavi'){
+    if(t.y&&t.x&&c.key){
+      const go=()=>{try{if(!Kakao.isInitialized())Kakao.init(c.key);
+        Kakao.Navi.start({name:t.n,x:+t.x,y:+t.y,coordType:'wgs84'});}
+        catch(e){toast('카카오내비 실행 실패 — 카카오맵으로 엽니다');location.href=webUrl(t);}};
+      if(window.Kakao)go();else loadKakaoSdk().then(go).catch(()=>{location.href=webUrl(t);});
+      return;
+    }
+    if(!c.key)toast('카카오 키가 없어 카카오맵으로 엽니다');
+    location.href=webUrl(t);return;
+  }
+  location.href=(app==='kakaomap')?webUrl(t):schemeUrl(t,app);
+}
+// 어디서든(사파리·캘린더·단축어) 열면 바로 길안내가 뜨는 링크
+function navLink(inst){
+  const c=navCfg(),t=targetOf(inst);
+  const q=new URLSearchParams({nav:'1',n:t.n,app:c.app});
+  if(t.y&&t.x){q.set('y',t.y);q.set('x',t.x);}
+  if(t.a)q.set('a',t.a);
+  if(c.app==='kakaonavi'&&c.key)q.set('k',c.key);
+  return location.origin+location.pathname+'?'+q;
+}
+
+// ── 길안내 실행 화면 ──
+let _ngT=null,_ngApp=null;
+function showNavOverlay(instOrId,auto=false,sub){
+  const inst=typeof instOrId==='string'?insts.find(i=>i.id===instOrId):instOrId;if(!inst)return;
+  openNavTarget(targetOf(inst),navCfg().app,auto,sub);
+}
+function openNavTarget(t,app,auto,sub){
+  _ngT=t;_ngApp=app;
+  document.getElementById('ng-title').textContent=t.n;
+  document.getElementById('ng-sub').innerHTML=sub||escH(t.a||'')+(t.y&&t.x?'':'<br><span style="color:var(--amber-tc)">좌표가 없어 주소로 검색해요</span>');
+  document.getElementById('ng-start').textContent=`🧭 ${NAV_APPS[app]||'내비'}로 길안내 시작`;
+  document.getElementById('ng-alt').innerHTML=Object.keys(NAV_APPS).filter(a=>a!==app)
+    .map(a=>`<button onclick="launchNav(_ngT,'${a}')">${NAV_APPS[a]}</button>`).join('');
+  document.getElementById('navgo').classList.add('open');
+  if(app==='kakaonavi'&&navCfg().key)loadKakaoSdk().catch(()=>{});
+  if(auto)setTimeout(()=>launchNav(t,app),600);
+}
+function launchFromOverlay(){if(_ngT)launchNav(_ngT,_ngApp);}
+function hideNavOverlay(){document.getElementById('navgo').classList.remove('open');}
+
+// ── 출발 시각 감시 (앱이 켜져 있을 때) ──
+function firedSet(){try{return JSON.parse(localStorage.getItem('chida_nav_fired')||'[]');}catch(e){return [];}}
+function markFired(k){const f=firedSet().filter(x=>x!==k);f.push(k);try{localStorage.setItem('chida_nav_fired',JSON.stringify(f.slice(-40)));}catch(e){}}
+async function notifyDepart(tr){
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  const title=`🚗 ${tr.inst.name} 출발할 시간`,body=`${hm(tr.start)} 수업 · 눌러서 길안내 시작`;
+  const opt={body,tag:'dep-'+tr.inst.id,requireInteraction:true,icon:'icon-192.png',data:{url:navLink(tr.inst)}};
+  try{const reg=await navigator.serviceWorker?.getRegistration();if(reg){await reg.showNotification(title,opt);return;}}catch(e){}
+  try{const n=new Notification(title,opt);n.onclick=()=>{window.focus();showNavOverlay(tr.inst,true);};}catch(e){}
+}
+function depTick(){
+  if(!curUser||!insts.length)return;
+  renderDep();
+  const c=navCfg();if(!c.auto)return;
+  const now=new Date();
+  const due=allTrips(now).find(tr=>now>=tr.dep&&now<tr.start&&hasPlace(tr.inst)&&!firedSet().includes(tr.inst.id+'@'+tr.start.getTime()));
+  if(!due)return;
+  markFired(due.inst.id+'@'+due.start.getTime());
+  notifyDepart(due);
+  if(document.visibilityState==='visible')
+    showNavOverlay(due.inst,true,`${hm(due.start)} 수업 · 지금 출발하면 딱 맞아요`);
+}
+setInterval(depTick,20000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')depTick();});
+setTimeout(depTick,4000);
+
+// ── 캘린더(.ics) 내보내기: 수업 일정 + 장소 + 출발 시각 알림 + 길안내 링크 ──
+function icsFold(line){
+  const out=[];let cur='',bytes=0;
+  for(const ch of line){const b=new TextEncoder().encode(ch).length;
+    if(bytes+b>(out.length?74:75)){out.push(cur);cur='';bytes=0;}cur+=ch;bytes+=b;}
+  out.push(cur);return out.join('\r\n ');
+}
+function icsEsc(s){return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');}
+function exportIcs(){
+  const list=insts.map(i=>tripFor(i)).filter(Boolean);
+  if(!list.length){toast('요일·시간이 정해진 기관이 없어요');return;}
+  const L=d=>`${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}T${pad2(d.getHours())}${pad2(d.getMinutes())}00`;
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z';
+  const out=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//chida-class//nav//KO','CALSCALE:GREGORIAN','METHOD:PUBLISH',
+    'X-WR-CALNAME:치다 수업','X-WR-TIMEZONE:Asia/Seoul',
+    'BEGIN:VTIMEZONE','TZID:Asia/Seoul','BEGIN:STANDARD','DTSTART:19700101T000000','TZOFFSETFROM:+0900','TZOFFSETTO:+0900','TZNAME:KST','END:STANDARD','END:VTIMEZONE'];
+  list.forEach(({inst,start,lead})=>{
+    const link=navLink(inst);
+    out.push('BEGIN:VEVENT',`UID:chida-${inst.id}@chida-class`,`DTSTAMP:${stamp}`,
+      `DTSTART;TZID=Asia/Seoul:${L(start)}`,`DURATION:PT${inst.dur||60}M`,`RRULE:FREQ=WEEKLY;BYDAY=${ICS_DAY[start.getDay()]}`,
+      `SUMMARY:${icsEsc('🥁 '+inst.name)}`);
+    if(inst.addr)out.push(`LOCATION:${icsEsc(inst.addr)}`);
+    if(inst.lat&&inst.lng)out.push(`GEO:${inst.lat};${inst.lng}`);
+    out.push(`URL:${link}`,`DESCRIPTION:${icsEsc(`${hm(new Date(start-lead*60000))} 출발 (이동 ${travelMin(inst)}분 + 여유 ${navCfg().buffer}분)\n길안내 바로 시작: ${link}`)}`,
+      'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc('🚗 '+inst.name+' 출발할 시간')}`,`TRIGGER:-PT${lead}M`,'END:VALARM','END:VEVENT');
+  });
+  out.push('END:VCALENDAR');
+  const blob=new Blob([out.map(icsFold).join('\r\n')+'\r\n'],{type:'text/calendar;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='chida-classes.ics';
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+  toast(`수업 ${list.length}개를 캘린더 파일로 내보냈어요`);
+}
+
+// ── 설정 화면 ──
+function renderNavSettings(){
+  const el=document.getElementById('nav-settings-card');if(!el)return;
+  const c=navCfg();
+  const perm=!('Notification' in window)?'이 기기는 알림 미지원':Notification.permission==='granted'?'✅ 알림 허용됨':Notification.permission==='denied'?'🚫 알림 차단됨 (기기 설정에서 허용)':'알림 허용하기';
+  el.innerHTML=`
+  <div class="setting-title">🧭 자동 길안내</div>
+  <div class="setting-desc">기관에 위치·이동 시간을 넣어두면 <b>수업 시작 − 이동 시간 − 여유 시간</b>에 맞춰 길안내를 띄워요.</div>
+  <div class="field"><label>길안내 앱</label><div class="sel-wrap"><select onchange="saveNavCfg({app:this.value});renderNavSettings()">
+    ${Object.entries(NAV_APPS).map(([k,v])=>`<option value="${k}" ${c.app===k?'selected':''}>${v}</option>`).join('')}</select></div></div>
+  <div class="field"><label>카카오 JavaScript 키 <span style="font-weight:500;color:var(--text3)">(카카오내비 실행 · 주소 검색용)</span></label>
+    <input type="text" autocomplete="off" spellcheck="false" value="${escH(c.key)}" placeholder="developers.kakao.com › 내 애플리케이션 › 앱 키"
+      onchange="saveNavCfg({key:this.value.trim()})"></div>
+  <div class="field"><label>여유 시간 (분)</label><input type="number" inputmode="numeric" value="${c.buffer}" onchange="saveNavCfg({buffer:Math.max(0,parseInt(this.value)||0)})"></div>
+  <div class="tgl-row" onclick="saveNavCfg({auto:!navCfg().auto});renderNavSettings()">
+    <span>출발 시각에 자동으로 길안내 열기<small>앱이 열려 있으면 바로 내비를 띄우고, 백그라운드면 알림을 보내요</small></span>
+    <div class="tgl ${c.auto?'on':''}"></div></div>
+  <button class="btn-ghost" style="width:100%" onclick="askNotify()">🔔 ${perm}</button>
+  <div class="hr"></div>
+  <div class="setting-title" style="font-size:14px">📅 캘린더에 넣기</div>
+  <div class="setting-desc" style="margin-bottom:10px">모든 수업을 매주 반복 일정으로 내보내요. 장소, <b>출발 시각 알림</b>, 누르면 바로 길안내가 시작되는 링크가 함께 들어가요.</div>
+  <button class="btn-ghost" style="width:100%" onclick="exportIcs()">캘린더 파일(.ics) 내보내기</button>
+  <div class="hr"></div>
+  <div class="setting-title" style="font-size:14px">📱 완전 자동 (아이폰 단축어)</div>
+  <ol class="steps">
+    <li>단축어 앱 › 자동화 › <b>＋</b> › <b>특정 시간</b></li>
+    <li>아래 출발 시각 입력 · 해당 요일만 <b>매주</b> 반복 · <b>즉시 실행</b></li>
+    <li>동작 <b>‘URL 열기’</b> › 아래에서 복사한 링크 붙여넣기</li>
+  </ol>
+  <div id="nav-shortcuts"></div>`;
+  renderShortcutList();
+}
+function renderShortcutList(){
+  const el=document.getElementById('nav-shortcuts');if(!el)return;
+  const c=navCfg();
+  const rows=insts.map(i=>tripFor(i)).filter(Boolean).sort((a,b)=>((a.start.getDay()+6)%7)-((b.start.getDay()+6)%7)||hm(a.dep).localeCompare(hm(b.dep)));
+  if(!rows.length){el.innerHTML='<div style="font-size:12px;color:var(--text3)">요일·시간이 있는 기관이 없어요</div>';return;}
+  el.innerHTML=rows.map(tr=>`<div class="sc-row">
+    <span class="sc-time">${['일','월','화','수','목','금','토'][tr.dep.getDay()]} ${hm(tr.dep)}</span>
+    <span class="sc-name">${escH(tr.inst.name)}${hasPlace(tr.inst)?'':' <span style="color:var(--amber-tc)">· 위치 없음</span>'}</span>
+    ${hasPlace(tr.inst)?`<button class="loc-btn" style="padding:7px 12px" onclick="copyShortcut('${tr.inst.id}')">링크 복사</button>`:''}
+  </div>`).join('')+(c.app==='kakaonavi'?'<div style="font-size:11px;color:var(--text3);margin-top:8px">카카오내비는 링크가 사파리를 거쳐 열려요. 사파리가 “열기”를 물으면 한 번 눌러주세요. 카카오맵·네이버지도·티맵을 고르면 앱이 바로 열려요.</div>':'');
+}
+function copyShortcut(id){
+  const inst=insts.find(i=>i.id===id);if(!inst)return;
+  const c=navCfg();
+  const url=c.app==='kakaonavi'?navLink(inst):schemeUrl(targetOf(inst),c.app);
+  navigator.clipboard.writeText(url).then(()=>toast('링크 복사됨 — 단축어에 붙여넣으세요'),()=>prompt('이 링크를 복사하세요',url));
+}
+async function askNotify(){
+  if(!('Notification' in window)){toast('홈 화면에 추가한 앱에서만 알림을 쓸 수 있어요');return;}
+  try{await Notification.requestPermission();}catch(e){}
+  renderNavSettings();
+}
+
+// ── ?nav=1 링크로 열렸을 때: 로그인 없이 바로 길안내 ──
+(function handleNavLink(){
+  const q=new URLSearchParams(location.search);if(q.get('nav')!=='1')return;
+  if(q.get('k')){const c=navCfg();if(!c.key)saveNavCfg({key:q.get('k')});}
+  const app=NAV_APPS[q.get('app')]?q.get('app'):navCfg().app;
+  const t={n:q.get('n')||'목적지',y:q.get('y')||'',x:q.get('x')||'',a:q.get('a')||''};
+  history.replaceState(null,'',location.pathname);
+  openNavTarget(t,app,true);
+})();
+if(navCfg().app==='kakaonavi'&&navCfg().key)setTimeout(()=>loadKakaoSdk().catch(()=>{}),1500);
 </script>
 </body>
 </html>
