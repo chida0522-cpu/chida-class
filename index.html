@@ -15,7 +15,8 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut,
+         reauthenticateWithPopup, reauthenticateWithRedirect }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -35,6 +36,7 @@ const db   = getFirestore(app);
 
 window._fb = { auth, db, GoogleAuthProvider, signInWithRedirect,
                getRedirectResult, onAuthStateChanged, signOut,
+               reauthenticateWithPopup, reauthenticateWithRedirect,
                collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp };
 
 document.addEventListener('DOMContentLoaded', () => window._appInit && window._appInit());
@@ -537,6 +539,7 @@ window._appInit=async function(){
   // 리다이렉트 로그인 결과 처리
   try{
     const result=await getRedirectResult(auth);
+    if(result&&window._gcalOnRedirect)window._gcalOnRedirect(result);
     if(result?.user){curUser=result.user;showApp();startSync();}
   }catch(e){console.log('redirect result:',e);}
   onAuthStateChanged(auth,user=>{
@@ -588,10 +591,12 @@ function refresh(){
   if(curPage==='week')renderWeek();
   if(curPage==='detail')renderDetail();
   if(curPage==='settings')renderSettingsUser();
+  if(window.gcalAfterData)gcalAfterData();
 }
 
 // ── 오프라인 큐 ──
 async function queueOp(op){
+  if(op.col==='insts'&&window.gcalDirty)gcalDirty();
   await idbPut({...op,qid:'q'+Date.now()+Math.random(),ts:Date.now()});
   pendingCount++;updateSyncBar();
   if(isOnline)flushQueue();
@@ -1163,6 +1168,7 @@ function saveNavCfg(patch){
   try{localStorage.setItem('chida_nav',JSON.stringify(c));}catch(e){}
   renderDep();renderShortcutList();
   if(c.app==='kakaonavi'&&c.key)loadKakaoSdk().catch(()=>{});
+  if(['app','key','buffer'].some(k=>k in patch))gcalDirty();
   return c;
 }
 
@@ -1432,8 +1438,13 @@ function renderNavSettings(){
     <div class="tgl ${c.auto?'on':''}"></div></div>
   <button class="btn-ghost" style="width:100%" onclick="askNotify()">🔔 ${perm}</button>
   <div class="hr"></div>
-  <div class="setting-title" style="font-size:14px">📅 캘린더에 넣기</div>
-  <div class="setting-desc" style="margin-bottom:10px">모든 수업을 매주 반복 일정으로 내보내요. 장소, <b>출발 시각 알림</b>, 누르면 바로 길안내가 시작되는 링크가 함께 들어가요.</div>
+  <div class="setting-title" style="font-size:14px">📆 구글 캘린더 연동</div>
+  <div class="setting-desc" style="margin-bottom:10px">수업을 구글 캘린더에 매주 반복 일정으로 넣고, 기관을 고치면 캘린더도 같이 고쳐요. 일정마다 장소, <b>출발 시각 알림</b>, 누르면 바로 길안내가 시작되는 링크가 들어가요.</div>
+  <button class="btn-main" style="padding:13px" onclick="gcalSync()">구글 캘린더에 반영</button>
+  <div id="gcal-status" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6"></div>
+  <div class="hr"></div>
+  <div class="setting-title" style="font-size:14px">📅 다른 캘린더에 넣기</div>
+  <div class="setting-desc" style="margin-bottom:10px">아이폰 캘린더 등에 넣을 파일을 내보내요. 한 번만 복사돼서 바뀐 내용은 다시 내보내야 해요.</div>
   <button class="btn-ghost" style="width:100%" onclick="exportIcs()">캘린더 파일(.ics) 내보내기</button>
   <div class="hr"></div>
   <div class="setting-title" style="font-size:14px">📱 완전 자동 (아이폰 단축어)</div>
@@ -1443,7 +1454,7 @@ function renderNavSettings(){
     <li>동작 <b>‘URL 열기’</b> › 아래에서 복사한 링크 붙여넣기</li>
   </ol>
   <div id="nav-shortcuts"></div>`;
-  renderShortcutList();
+  renderShortcutList();renderGcalStatus();
 }
 function renderShortcutList(){
   const el=document.getElementById('nav-shortcuts');if(!el)return;
@@ -1477,6 +1488,142 @@ async function askNotify(){
   history.replaceState(null,'',location.pathname);
   openNavTarget(t,app,true);
 })();
+// ════════════════════════════════════════════════════════════
+// 📆 구글 캘린더 연동 — 수업을 기본 캘린더에 매주 반복 일정으로 반영
+// ════════════════════════════════════════════════════════════
+const GCAL_SCOPE='https://www.googleapis.com/auth/calendar.events';
+const GCAL_API='https://www.googleapis.com/calendar/v3/calendars/primary/events';
+function gcalState(){try{return JSON.parse(localStorage.getItem('chida_gcal')||'{}');}catch(e){return {};}}
+function setGcalState(p){const s={...gcalState(),...p};try{localStorage.setItem('chida_gcal',JSON.stringify(s));}catch(e){}return s;}
+let _gTok=null,_gSyncing=false,_gDeb=null;
+try{_gTok=JSON.parse(sessionStorage.getItem('chida_gtok')||'null');}catch(e){}
+function gToken(){return _gTok&&_gTok.exp>Date.now()?_gTok.t:null;}
+function dropToken(){_gTok=null;try{sessionStorage.removeItem('chida_gtok');}catch(e){}}
+function keepToken(result){
+  const cred=window._fb.GoogleAuthProvider.credentialFromResult(result);
+  if(!cred||!cred.accessToken)return null;
+  _gTok={t:cred.accessToken,exp:Date.now()+50*60000};   // 구글 토큰은 1시간 유효
+  try{sessionStorage.setItem('chida_gtok',JSON.stringify(_gTok));}catch(e){}
+  return _gTok.t;
+}
+function isStandalone(){return (window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;}
+// 캘린더 권한을 받아 토큰 얻기 (홈 화면 앱은 팝업이 안 돼서 페이지 이동 방식)
+async function gAuth(){
+  const {auth,GoogleAuthProvider,reauthenticateWithPopup,reauthenticateWithRedirect}=window._fb;
+  const p=new GoogleAuthProvider();p.addScope(GCAL_SCOPE);
+  if(curUser&&curUser.email)p.setCustomParameters({login_hint:curUser.email});
+  if(!isStandalone()){
+    try{return keepToken(await reauthenticateWithPopup(auth.currentUser,p));}
+    catch(e){if(!['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code))throw e;}
+  }
+  try{sessionStorage.setItem('chida_gcal_pending','1');}catch(e){}
+  await reauthenticateWithRedirect(auth.currentUser,p);
+  return null;
+}
+window._gcalOnRedirect=function(result){
+  let pending=false;try{pending=sessionStorage.getItem('chida_gcal_pending')==='1';}catch(e){}
+  if(pending)keepToken(result);
+};
+function gcalAfterData(){   // 페이지 이동 방식으로 돌아온 뒤, 데이터가 오면 이어서 반영
+  let pending=false;try{pending=sessionStorage.getItem('chida_gcal_pending')==='1';}catch(e){}
+  if(!pending)return;
+  try{sessionStorage.removeItem('chida_gcal_pending');}catch(e){}
+  if(gToken())gcalSync();else toast('구글 캘린더 권한을 받지 못했어요');
+}
+async function gApi(method,url,body){
+  const t=gToken();if(!t)throw {code:'no-token'};
+  const headers={Authorization:'Bearer '+t};if(body)headers['Content-Type']='application/json';
+  const r=await fetch(url,{method,headers,body:body?JSON.stringify(body):undefined});
+  if(r.status===401){dropToken();throw {code:'no-token'};}
+  if(!r.ok&&!(method==='DELETE'&&r.status===410)){
+    let m='';try{const j=await r.json();m=(j.error&&j.error.message)||'';}catch(e){}
+    throw {code:'api',status:r.status,message:m};
+  }
+  return (r.status===204||method==='DELETE')?null:r.json();
+}
+function gErr(e){
+  const c=e&&e.code||'',m=(e&&e.message)||'';
+  if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'||c==='auth/user-cancelled')return '구글 연결을 취소했어요';
+  if(c==='api'&&/has not been used|is disabled|accessNotConfigured/i.test(m))return 'Google Cloud에서 Calendar API를 켜야 해요 (설정 안내 참고)';
+  if(c==='api'&&e.status===403)return '캘린더 권한이 없어요 — 다시 반영을 눌러 권한을 허용해주세요';
+  return '구글 캘린더 오류: '+(m||c||'알 수 없음');
+}
+function localISO(d){return `${ymd(d)}T${hm(d)}:00`;}
+function gcalEventFor(tr,keepStart){
+  const {inst,lead}=tr;const start=keepStart||tr.start;
+  const end=new Date(start.getTime()+(inst.dur||60)*60000);
+  const link=navLink(inst);
+  const ev={
+    summary:'🥁 '+inst.name,
+    description:`🚗 ${hm(new Date(start.getTime()-lead*60000))} 출발 (이동 ${travelMin(inst)}분 + 여유 ${navCfg().buffer}분)\n\n길안내 바로 시작:\n${link}`,
+    start:{dateTime:localISO(start),timeZone:'Asia/Seoul'},
+    end:{dateTime:localISO(end),timeZone:'Asia/Seoul'},
+    recurrence:[`RRULE:FREQ=WEEKLY;BYDAY=${ICS_DAY[start.getDay()]}`],
+    reminders:{useDefault:false,overrides:[{method:'popup',minutes:lead}]},
+    extendedProperties:{private:{chida:'1',instId:inst.id}},
+  };
+  if(inst.addr)ev.location=inst.addr;
+  if(/^https?:/.test(link))ev.source={title:'치다 길안내',url:link};
+  return ev;
+}
+async function gcalSync(silent=false,retried=false){
+  if(_gSyncing||!curUser)return;
+  if(!gToken()){
+    if(silent)return;
+    try{if(!(await gAuth()))return;}catch(e){toast(gErr(e));return;}
+  }
+  _gSyncing=true;if(!silent)toast('구글 캘린더에 반영 중…');
+  try{
+    const ex=await gApi('GET',`${GCAL_API}?privateExtendedProperty=${enc('chida=1')}&maxResults=250`);
+    const byInst={};
+    (ex.items||[]).forEach(e=>{const id=e.extendedProperties&&e.extendedProperties.private&&e.extendedProperties.private.instId;if(id)(byInst[id]=byInst[id]||[]).push(e);});
+    let add=0,upd=0,del=0;
+    for(const tr of insts.map(i=>tripFor(i)).filter(Boolean)){
+      const olds=byInst[tr.inst.id]||[];delete byInst[tr.inst.id];
+      const old=olds.shift();
+      for(const dup of olds){await gApi('DELETE',`${GCAL_API}/${dup.id}`);del++;}
+      if(old){
+        // 요일·시간이 같으면 반복 시작일을 그대로 둬서 지난 수업 기록이 캘린더에 남게
+        const os=new Date((old.start&&old.start.dateTime)||0);
+        const same=os.getDay()===tr.start.getDay()&&hm(os)===hm(tr.start);
+        await gApi('PUT',`${GCAL_API}/${old.id}`,gcalEventFor(tr,same?os:null));upd++;
+      }else{await gApi('POST',GCAL_API,gcalEventFor(tr));add++;}
+    }
+    for(const list of Object.values(byInst))for(const e of list){await gApi('DELETE',`${GCAL_API}/${e.id}`);del++;}
+    setGcalState({on:true,last:Date.now(),dirty:false});
+    toast(silent?'구글 캘린더도 업데이트됐어요':`구글 캘린더 반영 완료 · 추가 ${add} · 수정 ${upd} · 삭제 ${del}`);
+  }catch(e){
+    _gSyncing=false;
+    if(e.code==='no-token'&&!silent&&!retried){renderGcalStatus();return gcalSync(false,true);}
+    if(silent)setGcalState({dirty:true});else toast(gErr(e));
+  }finally{_gSyncing=false;renderGcalStatus();}
+}
+async function gcalClear(){
+  if(!confirm('구글 캘린더에서 치다가 넣은 수업 일정을 모두 지울까요?'))return;
+  if(!gToken()){try{if(!(await gAuth()))return;}catch(e){toast(gErr(e));return;}}
+  try{
+    const ex=await gApi('GET',`${GCAL_API}?privateExtendedProperty=${enc('chida=1')}&maxResults=250`);
+    for(const e of ex.items||[])await gApi('DELETE',`${GCAL_API}/${e.id}`);
+    setGcalState({on:false,dirty:false});toast(`구글 캘린더에서 ${(ex.items||[]).length}개 지웠어요`);
+  }catch(e){toast(gErr(e));}
+  renderGcalStatus();
+}
+function gcalDirty(){
+  const s=gcalState();if(!s.on)return;
+  setGcalState({dirty:true});renderGcalStatus();
+  clearTimeout(_gDeb);
+  if(gToken())_gDeb=setTimeout(()=>gcalSync(true),2500);
+}
+function renderGcalStatus(){
+  const el=document.getElementById('gcal-status');if(!el)return;
+  const s=gcalState();
+  const when=s.last?new Date(s.last):null;
+  const last=when?`${when.getMonth()+1}/${when.getDate()} ${hm(when)}`:'';
+  el.innerHTML=!s.on?'아직 연결 안 됨 · 처음 누르면 구글 캘린더 권한을 물어봐요'
+    :s.dirty?'<span style="color:var(--amber-tc);font-weight:600">⚠️ 바뀐 내용이 있어요 — ‘구글 캘린더에 반영’을 눌러주세요</span>'
+    :`✅ 연결됨 · 마지막 반영 ${last}`;
+  if(s.on)el.innerHTML+=` · <span onclick="gcalClear()" style="text-decoration:underline;cursor:pointer">캘린더에서 지우기</span>`;
+}
 if(navCfg().app==='kakaonavi'&&navCfg().key)setTimeout(()=>loadKakaoSdk().catch(()=>{}),1500);
 </script>
 </body>
