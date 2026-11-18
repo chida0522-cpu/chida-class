@@ -20,7 +20,8 @@ self.addEventListener('fetch', e => {
       e.request.url.includes('google') ||
       e.request.url.includes('gstatic') ||
       e.request.url.includes('jsdelivr') ||
-      e.request.url.includes('cdnjs')) return;
+      e.request.url.includes('cdnjs') ||
+      e.request.url.includes('kakao')) return;
   e.respondWith(
     fetch(e.request).then(res => {
       const clone = res.clone();
@@ -28,4 +29,11 @@ self.addEventListener('fetch', e => {
       return res;
     }).catch(() => caches.match(e.request))
   );
+});
+
+// 출발 알림을 누르면 길안내 링크 열기
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data && e.notification.data.url;
+  if (url) e.waitUntil(self.clients.openWindow(url));
 });
